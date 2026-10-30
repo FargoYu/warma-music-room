@@ -41,3 +41,30 @@ function sceneImageSource(scene, layer, position, count) {
   if (scene === 7 && SCENE8_MOTION.sprites[layer.name]) return SCENE8_MOTION.sprites[layer.name].src;
   return layer.src;
 }
+
+// Hold only the two neighboring scenes decoded, limiting mobile memory use.
+function createScenePreloader(tracks) {
+  const cache = new Map();
+  function sources(scene) {
+    const layers = tracks[scene].layers;
+    const urls = layers.flatMap((layer, position) => {
+      if (scene === 1 && layer.name === 'Really' || scene === 2 && position > 0) return [];
+      return [sceneImageSource(scene, layer, position, layers.length)];
+    });
+    if (scene === 1) urls.push('assets/really.png');
+    if (scene === 2) urls.push(...['person','planet','star1','star2','star3'].map(name => `assets/third/${name}.png`));
+    return [...new Set(urls)];
+  }
+  function prepare(scene) {
+    if (cache.has(scene)) return cache.get(scene);
+    const images = sources(scene).map(src => { const image = new Image(); image.decoding = 'async'; image.src = src; return image; });
+    const entry = {images, ready: Promise.all(images.map(image => image.decode().catch(() => {})))};
+    cache.set(scene, entry);
+    return entry;
+  }
+  return {neighbors(scene) {
+    const wanted = [(scene + 1) % tracks.length, (scene - 1 + tracks.length) % tracks.length];
+    for (const key of cache.keys()) if (!wanted.includes(key)) cache.delete(key);
+    wanted.forEach(prepare);
+  }};
+}

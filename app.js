@@ -22,6 +22,7 @@ function updatePlay(){$('#play').textContent=audio.paused?'▶':'Ⅱ';$('#play')
 function updateFavorite(){let on=favorites.has(index);$('#favorite').textContent=on?'♥':'♡';$('#favorite').setAttribute('aria-pressed',on);const heart=stage.querySelector('.hotspot.heart');if(heart)heart.setAttribute('aria-pressed',String(on))}
 $('#play').onclick=()=>audio.paused?audio.play().catch(()=>{}):audio.pause();$('#previous').onclick=()=>select(index-1,true);$('#next').onclick=()=>select(index+1,true);$('#favorite').onclick=()=>{favorites.has(index)?favorites.delete(index):favorites.add(index);try{localStorage.setItem('warma-favorites',JSON.stringify([...favorites]))}catch{};updateFavorite()};$('#volume').oninput=e=>audio.volume=Number(e.target.value);audio.volume=.8;seek.oninput=()=>{if(Number.isFinite(audio.duration))audio.currentTime=Number(seek.value)/1000*audio.duration};audio.ontimeupdate=()=>{seek.value=audio.duration?audio.currentTime/audio.duration*1000:0;$('#current').textContent=format(audio.currentTime)};audio.onloadedmetadata=()=>$('#duration').textContent=format(audio.duration);audio.onplay=updatePlay;audio.onpause=updatePlay;audio.onended=()=>select(index+1,true);$('#list-toggle').onclick=()=>$('.mobile-list').scrollIntoView({behavior:'smooth'});
 tracks=TRACKS;
+const scenePreloader=createScenePreloader(tracks);
 
 function addStageControls(){const controls=[['heart','收藏歌曲',()=>$('#favorite').click()],['prev','上一首',()=>select(index-1,true)],['toggle','播放或暂停',()=>audio.paused?audio.play().catch(()=>{}):audio.pause()],['next','下一首',()=>select(index+1,true)]];for(const [cls,label,action] of controls){const b=document.createElement('button');b.className=`hotspot ${cls}`;b.setAttribute('aria-label',label);if(cls==='heart')b.innerHTML='<svg viewBox="0 0 48 44" aria-hidden="true"><path d="M24 39 C20 36 4 25 4 14 C4 3 17 0 24 9 C31 0 44 3 44 14 C44 25 28 36 24 39 Z"/></svg>';if(cls==='prev'||cls==='next')b.innerHTML='<svg class="skip-icon '+cls+'" viewBox="0 0 48 40" aria-hidden="true"><path d="M3 3 Q3 1 6 1 H8 Q11 1 11 4 V36 Q11 39 8 39 H6 Q3 39 3 36 Z M12 18 L27 7 Q30 5 30 9 V17 L42 7 Q46 4 46 9 V31 Q46 36 42 33 L30 23 V31 Q30 35 27 33 L12 22 Q9 20 12 18 Z"/></svg>';b.onclick=action;stage.append(b)}const slider=document.createElement('input');slider.type='range';slider.min='0';slider.max='1000';slider.value=seek.value;slider.className='art-seek';slider.setAttribute('aria-label','画面中的播放进度');slider.oninput=()=>{if(Number.isFinite(audio.duration))audio.currentTime=Number(slider.value)/1000*audio.duration};stage.append(slider)}
 function selectScene(i,autoplay=false){mountScene(i,autoplay);addStageControls();updatePlay();updateFavorite();frameScheduler.refresh()}
@@ -38,7 +39,7 @@ function select(i, autoplay = false) {
   document.querySelectorAll('.transition-old').forEach(node => node.remove());
   stage.style.visibility = '';
 
-  if (reducedMotion.matches) { selectScene(i, autoplay); removeSceneEntry(); return; }
+  if (reducedMotion.matches) { selectScene(i, autoplay); removeSceneEntry(); scenePreloader.neighbors(index); return; }
   const old = stage.cloneNode(true);
   old.removeAttribute('id');
   old.classList.add('transition-old');
@@ -63,7 +64,7 @@ function select(i, autoplay = false) {
   Promise.all(images.map(img => img.decode().catch(() => {}))).then(() => {
     if (version !== transitionVersion) return;
     stage.style.visibility = '';
-    if (reducedMotion.matches) { old.remove(); return; }
+    if (reducedMotion.matches) { old.remove(); scenePreloader.neighbors(index); return; }
     const options = {duration: 420, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'both'};
     const outgoing = old.animate([{transform:'translateX(0)'},{transform:`translateX(${-direction * 100}%)`}], options);
     const incoming = stage.animate([{transform:`translateX(${direction * 100}%)`},{transform:'translateX(0)'}], options);
@@ -71,6 +72,7 @@ function select(i, autoplay = false) {
     outgoing.finished.then(() => {
       if (version !== transitionVersion) return;
       old.remove(); incoming.cancel(); transitionAnimations = [];
+      scenePreloader.neighbors(index);
     }).catch(() => old.remove());
   });
 };
@@ -86,6 +88,7 @@ function removeSceneEntry() {
 // Render the first scene at rest; playback begins only on user action.
 selectScene(0, false);
 removeSceneEntry();
+scenePreloader.neighbors(0);
 
 reducedMotion.addEventListener('change',()=>{
  const time=audio.currentTime,playing=!audio.paused;
