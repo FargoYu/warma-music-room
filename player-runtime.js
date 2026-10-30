@@ -62,9 +62,32 @@ function createScenePreloader(tracks) {
     cache.set(scene, entry);
     return entry;
   }
-  return {neighbors(scene) {
+  return {sources, neighbors(scene) {
     const wanted = [(scene + 1) % tracks.length, (scene - 1 + tracks.length) % tracks.length];
     for (const key of cache.keys()) if (!wanted.includes(key)) cache.delete(key);
     wanted.forEach(prepare);
   }};
+}
+
+// Warm the browser cache before enabling playback. Audio blobs remain available
+// locally for this page session; image decoding stays limited to nearby scenes.
+async function preloadPlayerAssets(tracks, preloader, onProgress) {
+  const images = [...new Set(tracks.flatMap((_, scene) => preloader.sources(scene)))];
+  const jobs = [...images.map(url => ({url})), ...tracks.map((_, i) => ({url: `audio/${i + 1}.mp3`, audio: i}))];
+  const audioUrls = [];
+  let done = 0, cursor = 0;
+  async function worker() {
+    while (cursor < jobs.length) {
+      const job = jobs[cursor++];
+      const response = await fetch(job.url);
+      if (!response.ok) throw new Error(`加载失败：${job.url}`);
+      if (job.audio !== undefined) audioUrls[job.audio] = URL.createObjectURL(await response.blob());
+      else await response.blob();
+      onProgress(++done, jobs.length);
+    }
+  }
+  const results = await Promise.allSettled(Array.from({length: 4}, worker));
+  const failure = results.find(result => result.status === 'rejected');
+  if (failure) { audioUrls.forEach(url => URL.revokeObjectURL(url)); throw failure.reason; }
+  return audioUrls;
 }
