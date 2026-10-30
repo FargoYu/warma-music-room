@@ -55,7 +55,7 @@ function createEighthMotion(layers, audio, art, reducedMotion) {
     const still=reducedMotion.matches,t=still?0:(Number.isFinite(audio.currentTime)?audio.currentTime:0);
     for(const anim of animations) {
       anim.playbackRate=audio.playbackRate;anim.currentTime=t*1000;
-      if(still||audio.paused||audio.seeking||waiting)anim.pause();else anim.play();
+      if(document.hidden||still||audio.paused||audio.seeking||waiting)anim.pause();else anim.play();
     }
     if(still)animations.at(-1).currentTime=1000;
   }

@@ -25,7 +25,7 @@ function createFourthMotion(layers, audio) {
   if(event?.type==='waiting')waiting=true;
   if(event?.type==='playing'||event?.type==='pause')waiting=false;
   const t=Number.isFinite(audio.currentTime)?audio.currentTime:0;
-  for(const anim of animations){anim.playbackRate=audio.playbackRate;anim.currentTime=t*1000;if(audio.paused||audio.seeking||waiting)anim.pause();else anim.play()}
+  for(const anim of animations){anim.playbackRate=audio.playbackRate;anim.currentTime=t*1000;if(document.hidden||audio.paused||audio.seeking||waiting)anim.pause();else anim.play()}
  }
  events.forEach(event=>audio.addEventListener(event,sync));document.addEventListener('visibilitychange',sync);sync();
  return {sync,destroy(){events.forEach(event=>audio.removeEventListener(event,sync));document.removeEventListener('visibilitychange',sync);animations.forEach(anim=>anim.cancel())}};
