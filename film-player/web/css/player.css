@@ -1,0 +1,284 @@
+/* Warma player - styles.
+   The art layer is the film itself (<video>). The live layer only redraws the
+   scrub knob, the elapsed clock and the play key, at the pixel positions
+   measured per song.
+   Design base: 1080x1894, scaled uniformly. */
+:root {
+  color-scheme: only light;
+  --w: 1080px;
+  --h: 1600px;
+  --ink: #9B6465;
+  --heart: #9B6465;
+  --bg: #fff;
+  --heart-bg: #fff;
+  --ease: cubic-bezier(.22, .61, .36, 1);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #0d0d11;
+  overflow: hidden;
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+.stage {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(120% 80% at 50% 0%, #1e1e26 0%, #101014 60%, #0a0a0d 100%);
+}
+
+.phone {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--w);
+  height: var(--h);
+  margin-left: calc(var(--w) / -2);
+  margin-top: calc(var(--h) / -2);
+  transform-origin: 50% 50%;
+  overflow: hidden;
+  color: var(--ink);
+  background: var(--bg);
+  box-shadow: 0 40px 120px rgba(0, 0, 0, .55);
+  user-select: none;
+  touch-action: manipulation;
+  isolation: isolate;
+}
+
+.bg { position: absolute; inset: 0; background: var(--bg); z-index: 0; }
+
+/* ---------- drawings ----------
+   The three poses cut from the footage cycle in the film's own order, at the
+   song's own measured period: hand-drawn animation is a handful of drawings
+   held in sequence.  The cycle runs only while the song does: a paused song
+   freezes on the drawing it had reached, it does not jump back to the first. */
+.pics { position: absolute; inset: 0; z-index: 1; }
+.pics .pic {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+/* the moving region of the drawing, cut from the film and looped in place:
+   positioned by the player, plays only while the song does */
+.pics .crop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.ui { position: absolute; inset: 0; z-index: 2; color: var(--ink); }
+
+/* ---------- hit targets ----------
+   The icons themselves are painted in the art layer, so these buttons are
+   invisible hit areas laid over them. */
+.glyph {
+  position: absolute;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  display: block;
+  opacity: 0;
+  transition: opacity .18s var(--ease);
+}
+/* the measured ink boxes are the visuals, not the targets: at phone scale the
+   dots key is a few physical pixels wide.  An invisible pseudo-element grows
+   every key's hit area without moving anything. */
+.glyph::after { content: ""; position: absolute; inset: -12px; }
+.glyph:hover { opacity: .18; background: currentColor; border-radius: 8px; }
+.glyph:active { opacity: .3; background: currentColor; border-radius: 8px; }
+
+
+/* ---------- heart ----------
+   Drawn live for one reason: a like has to change the heart itself, and the
+   film's heart is painted into the artwork.  The rim is the song's own ink (the
+   film draws the heart as an ink rim around a body in the heart colour).  The
+   body carries the state: a pale tint of that colour when not liked, the colour
+   itself when liked - already pushed to 3:1 on the backdrop under it by
+   build_data3, because on five posters the film's body would be invisible.
+   No background plate, no halo. */
+/* the hit areas are invisible by design; keyboard focus has to be visible, so
+   the key itself comes back at full opacity with a ring while focused */
+.glyph:focus-visible { opacity: 1; outline: 3px solid currentColor; outline-offset: 6px; border-radius: 8px; }
+.glyph.heart { opacity: 1; }
+.glyph.heart:hover { opacity: .78; background: none; border-radius: 0; }
+.glyph.heart:active { opacity: .62; background: none; }
+.glyph.heart:focus-visible { outline: 3px solid currentColor; outline-offset: 6px; }
+.heart-ico .heart-body {
+  fill: color-mix(in srgb, var(--heart) 32%, var(--heart-bg));
+  stroke: currentColor;
+  stroke-width: 4;
+  stroke-linejoin: round;
+  transition: fill .18s var(--ease);
+}
+.glyph.heart.on .heart-ico .heart-body { fill: var(--heart); }
+
+/* ---------- song info (the dots key) ---------- */
+.info {
+  position: absolute;
+  right: 70px;
+  top: 400px;
+  max-width: 330px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(255, 253, 248, .96);
+  color: #4a3b3b;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .28);
+  font-size: 20px;
+  z-index: 5;
+}
+.info[hidden] { display: none; }   /* a display:flex rule beats [hidden] otherwise */
+.info b { font-size: 22px; }
+.info span { opacity: .7; }
+.info a { color: inherit; opacity: .8; }
+
+/* ---------- play key ----------
+   Drawn live, not taken from the still: the film never shows a pause state and
+   its painted triangle is erased from the artwork, so the key has to be drawn
+   here.  The colour comes from the song's own ink, pushed until it clears 3:1
+   against the backdrop the key actually sits on. */
+.glyph.play { opacity: 1; }
+.glyph.play:hover { opacity: .72; background: none; border-radius: 0; }
+.glyph.play:active { opacity: .55; background: none; }
+.glyph.play:focus-visible { outline: 3px solid currentColor; outline-offset: 6px; }
+.ico { display: block; width: 100%; height: 100%; fill: currentColor; stroke: currentColor;
+       stroke-width: 3; stroke-linejoin: round; }
+.play .pause { display: none; }
+.play.playing .tri { display: none; }
+.play.playing .pause { display: block; }
+/* the second half of the film is a mirror image: its play key points left */
+.glyph.play.flip .ico { transform: scaleX(-1); }
+
+/* ---------- progress ----------
+   The bar line is part of the film; only the knob is drawn here. */
+.bar:focus-visible { outline: 3px solid currentColor; outline-offset: 10px; border-radius: 6px; }
+.bar {
+  position: absolute;
+  cursor: pointer;
+  touch-action: none;
+}
+.knob {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  color: inherit;
+  background: currentColor;
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* ---------- clock ---------- */
+.clock {
+  position: absolute;
+  white-space: pre;
+  color: inherit;
+  pointer-events: none;
+  font-size: 0;
+  line-height: 0;
+}
+/* each glyph is placed at the slot the film drew it on */
+.clock .bit {
+  position: absolute;
+  display: block;
+  background-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* ---------- list sheet ----------
+   The blur belongs to the open state only.  A backdrop-filter on an element
+   that is always in the tree is a full-viewport readback and blur of whatever
+   is beneath it - which, while a song plays, is the artwork itself - on every
+   frame the browser paints, whether or not anyone ever opens the list.  Closed,
+   the sheet is also taken out of the tree with visibility so it costs nothing
+   at all; the transition still runs because it is on opacity. */
+.sheet {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 8, 12, .55);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .3s var(--ease), visibility .3s var(--ease);
+  z-index: 20;
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+.sheet.open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  backdrop-filter: blur(6px);
+}
+
+.sheet-inner {
+  width: min(760px, 92vw);
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  background: #fffdf8;
+  border-radius: 26px;
+  padding: 26px 26px 18px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .5);
+  transform: translateY(18px) scale(.98);
+  transition: transform .3s var(--ease);
+  color: #4a3b3b;
+}
+.sheet.open .sheet-inner { transform: none; }
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 26px;
+  letter-spacing: 2px;
+  padding: 0 6px 14px;
+  border-bottom: 1px dashed rgba(0, 0, 0, .14);
+}
+.close { border: 0; background: none; font-size: 34px; line-height: 1; cursor: pointer; color: #8a6b6b; }
+
+.list { list-style: none; margin: 8px 0 0; padding: 0; overflow: auto; flex: 1; }
+.list li {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  padding: 13px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background .18s var(--ease);
+}
+.list li:hover { background: rgba(0, 0, 0, .05); }
+.list li.active { background: rgba(155, 100, 101, .16); }
+.list .n { width: 40px; opacity: .5; font-size: 22px; text-align: right; }
+.list .t { font-size: 25px; }
+.list .s { margin-left: auto; font-size: 19px; opacity: .5; }
+
+.list li.added .t::before { content: "＋ "; opacity: .55; }
+.list li.liked .t::after { content: " ♥"; opacity: .75; }
+
+.sheet-foot {
+  padding: 14px 8px 2px;
+  font-size: 17px;
+  opacity: .45;
+  border-top: 1px dashed rgba(0, 0, 0, .12);
+  margin-top: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* UI transitions only: the artwork's cycle is the product, not decoration */
+  *:not(.pics .pic) { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- the player draws the film's measured colours; dark-mode extensions must not
+     remap them (Dark Reader honours this tag) -->
+<meta name="darkreader-lock">
+<title>沃玛の播放器</title>
+<link rel="stylesheet" href="css/player.css?v=1793479563325">
+</head>
+<body>
+<div class="stage">
+  <div class="phone" id="phone">
+    <div class="bg" id="bg"></div>
+    <div class="pics" id="pics">
+      <img class="pic" id="pic0" alt="">
+      <video class="crop" id="crop" muted loop playsinline preload="none"></video>
+    </div>
+    <div class="ui" id="ui">
+      <button class="glyph" id="chevron" aria-label="播放列表"></button>
+      <button class="glyph" id="dots" aria-label="歌曲信息" aria-expanded="false"></button>
+      <div class="info" id="info" role="dialog" aria-label="歌曲信息" tabindex="-1" hidden>
+        <b id="infoTitle"></b>
+        <span id="infoSub"></span>
+        <a id="infoLink" href="#" target="_blank" rel="noopener">在原视频里看</a>
+      </div>
+      <button class="glyph" id="btnList" aria-label="播放列表"></button>
+      <button class="glyph heart" id="btnHeart" aria-label="喜欢" aria-pressed="false">
+        <svg class="ico heart-ico" viewBox="0 0 48 44" preserveAspectRatio="none" aria-hidden="true">
+          <path class="heart-body" d="M24 41 C10 31 2 24 2 15 C2 7 8 2 15 2 C19 2 22 4 24 7 C26 4 29 2 33 2 C40 2 46 7 46 15 C46 24 38 31 24 41 Z"/>
+        </svg>
+      </button>
+      <button class="glyph" id="btnPlus" aria-label="加入"></button>
+      <div class="bar" id="bar" role="slider" tabindex="0" aria-label="播放进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext=""><div class="knob" id="knob"></div></div>
+      <div class="clock" id="clockCur"></div>
+      <button class="glyph" id="btnPrev" aria-label="上一首"></button>
+      <button class="glyph play" id="btnPlay" aria-label="播放">
+        <svg class="ico" viewBox="0 0 48 53" aria-hidden="true">
+          <path class="tri" d="M3 3 L45 26.5 L3 50 Z"/>
+          <g class="pause"><rect x="5" y="3" width="13" height="47" rx="3"/><rect x="30" y="3" width="13" height="47" rx="3"/></g>
+        </svg>
+      </button>
+      <button class="glyph" id="btnNext" aria-label="下一首"></button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="sheet-inner">
+    <div class="sheet-head">
+      <span>沃玛の播放器</span>
+      <button class="close" id="btnClose" aria-label="关闭">×</button>
+    </div>
+    <ol class="list" id="list"></ol>
+    <div class="sheet-foot">含翻唱、原创曲、vocaloid 曲人声本家 / 不完全收录</div>
+  </div>
+</div>
+
+<audio id="audio" preload="metadata"></audio>
+<script src="js/data.js?v=1793479563325"></script>
+<script src="js/player.js?v=1793479563325"></script>
+</body>
+</html>
