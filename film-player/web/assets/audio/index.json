@@ -1,0 +1,110 @@
+[
+ {
+  "id": 1,
+  "bv": "BV1ut411P7Sz",
+  "duration": 142.12,
+  "trimmed": [
+   0.9,
+   143.02
+  ]
+ },
+ {
+  "id": 2,
+  "bv": "BV1KE411D7dS",
+  "duration": 132.96,
+  "trimmed": [
+   0.0,
+   132.95
+  ]
+ },
+ {
+  "id": 3,
+  "bv": "BV1at411b7ac",
+  "duration": 191.06,
+  "trimmed": [
+   0.0,
+   191.06
+  ]
+ },
+ {
+  "id": 4,
+  "bv": "BV1q441137TT",
+  "duration": 232.23,
+  "trimmed": [
+   1.19,
+   233.41
+  ]
+ },
+ {
+  "id": 5,
+  "bv": "BV1ME411174q",
+  "duration": 210.45,
+  "trimmed": [
+   0.0,
+   210.45
+  ]
+ },
+ {
+  "id": 6,
+  "bv": "BV1XJ41157y8",
+  "duration": 388.76,
+  "trimmed": [
+   0.0,
+   388.76
+  ]
+ },
+ {
+  "id": 7,
+  "bv": "BV1654y17773",
+  "duration": 218.98,
+  "trimmed": [
+   2.22,
+   221.19
+  ]
+ },
+ {
+  "id": 8,
+  "bv": "BV1W642137Gb",
+  "duration": 251.2,
+  "trimmed": [
+   0.87,
+   252.07
+  ]
+ },
+ {
+  "id": 9,
+  "bv": "BV1L34y1V7YP",
+  "duration": 255.95,
+  "trimmed": [
+   0.0,
+   255.95
+  ]
+ },
+ {
+  "id": 10,
+  "bv": "BV19J411Y788",
+  "duration": 228.86,
+  "trimmed": [
+   1.07,
+   229.93
+  ]
+ },
+ {
+  "id": 11,
+  "bv": "BV1o4421Z7Mu",
+  "duration": 205.49,
+  "trimmed": [
+   2.32,
+   207.81
+  ]
+ },
+ {
+  "id": 12,
+  "bv": "BV18D4y1Y7o6",
+  "duration": 176.67,
+  "trimmed": [
+   1.76,
+   178.43
+  ]
+ }
+]
