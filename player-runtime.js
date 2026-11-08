@@ -42,52 +42,60 @@ function sceneImageSource(scene, layer, position, count) {
   return layer.src;
 }
 
-// Hold only the two neighboring scenes decoded, limiting mobile memory use.
-function createScenePreloader(tracks) {
-  const cache = new Map();
-  function sources(scene) {
-    const layers = tracks[scene].layers;
-    const urls = layers.flatMap((layer, position) => {
-      if (scene === 1 && layer.name === 'Really' || scene === 2 && position > 0) return [];
-      return [sceneImageSource(scene, layer, position, layers.length)];
-    });
-    if (scene === 1) urls.push('assets/really.png');
-    if (scene === 2) urls.push(...['person','planet','star1','star2','star3'].map(name => `assets/third/${name}.png`));
-    return [...new Set(urls)];
-  }
-  function prepare(scene) {
-    if (cache.has(scene)) return cache.get(scene);
-    const images = sources(scene).map(src => { const image = new Image(); image.decoding = 'async'; image.src = src; return image; });
-    const entry = {images, ready: Promise.all(images.map(image => image.decode().catch(() => {})))};
-    cache.set(scene, entry);
-    return entry;
-  }
-  return {sources, neighbors(scene) {
-    const wanted = [(scene + 1) % tracks.length, (scene - 1 + tracks.length) % tracks.length];
-    for (const key of cache.keys()) if (!wanted.includes(key)) cache.delete(key);
-    wanted.forEach(prepare);
-  }};
+function portraitInsetSource(scene) {
+  return scene === 3 || scene === 6 ? `assets/player-ui/${scene + 1}-portrait.png` : null;
 }
 
-// Warm the browser cache before enabling playback. Audio blobs remain available
-// locally for this page session; image decoding stays limited to nearby scenes.
-async function preloadPlayerAssets(tracks, preloader, onProgress) {
-  const images = [...new Set(tracks.flatMap((_, scene) => preloader.sources(scene)))];
-  const jobs = [...images.map(url => ({url})), ...tracks.map((_, i) => ({url: `audio/${i + 1}.mp3`, audio: i}))];
+function sceneInterfaceSource(scene) {
+  // Scenes 9 and 10 already supply a transparent interface as a track layer.
+  return scene === 8 || scene === 9 ? null : `assets/player-ui/${scene + 1}-interface.png`;
+}
+
+function sceneImageSources(track, scene) {
+  const layers = track.layers;
+  const urls = layers.flatMap((layer, position) => {
+    if (scene === 1 && layer.name === 'Really' || scene === 2 && position > 0) return [];
+    return [sceneImageSource(scene, layer, position, layers.length)];
+  });
+  const inset = portraitInsetSource(scene);
+  if (inset) urls.push(inset);
+  const ui = sceneInterfaceSource(scene);
+  if (ui) urls.push(ui);
+  if (scene === 1) urls.push(...secondWordSpecs.map(() => 'assets/really.png'));
+  if (scene === 2) urls.push(...['person','planet','star1','star2','star3'].map(name => `assets/third/${name}.png`));
+  return urls;
+}
+
+// Prepare the image elements that will actually be mounted on stage.
+async function preloadPlayerAssets(tracks, onProgress) {
+  const jobs = tracks.flatMap(sceneImageSources).map(url => ({url}));
+  if (location.protocol !== 'file:') {
+    jobs.push(...tracks.map((_, i) => ({url: `audio/${i + 1}.mp3`, audio: i})));
+  }
+  const images = new Map();
   const audioUrls = [];
   let done = 0, cursor = 0;
   async function worker() {
     while (cursor < jobs.length) {
       const job = jobs[cursor++];
-      const response = await fetch(job.url);
-      if (!response.ok) throw new Error(`加载失败：${job.url}`);
-      if (job.audio !== undefined) audioUrls[job.audio] = URL.createObjectURL(await response.blob());
-      else await response.blob();
+      if (job.audio === undefined) {
+        const image = new Image();
+        image.alt = '';
+        image.decoding = 'async';
+        image.src = job.url;
+        await image.decode();
+        if (!images.has(job.url)) images.set(job.url, []);
+        images.get(job.url).push(image);
+      } else {
+        const response = await fetch(job.url);
+        if (!response.ok) throw new Error(`加载失败：${job.url}`);
+        audioUrls[job.audio] = URL.createObjectURL(await response.blob());
+      }
       onProgress(++done, jobs.length);
     }
   }
   const results = await Promise.allSettled(Array.from({length: 4}, worker));
   const failure = results.find(result => result.status === 'rejected');
   if (failure) { audioUrls.forEach(url => URL.revokeObjectURL(url)); throw failure.reason; }
-  return audioUrls;
+  return {images, audioUrls};
 }

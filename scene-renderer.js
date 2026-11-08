@@ -52,17 +52,16 @@ function setupSecondLayer(img,name){
  const frames=config.degrees.map(deg=>({transform:`rotate(${deg}deg)`}));
  const a=img.animate(frames,{duration:1000,iterations:Infinity,easing:'linear'});a.pause();secondAnimations.push(a);
 }
+// The four words travel at the same measured speed, with distinct fade slopes.
+const secondWordSpecs=[
+ {x:18.3,y:12.86,alpha:.93,fade:1.52},
+ {x:68.8,y:20.35,alpha:1.22,fade:1.52},
+ {x:18.5,y:29.44,alpha:2.70,fade:1.50,appear:.48,rise:.50},
+ {x:66.85,y:27.06,alpha:1.80,fade:1.17,appear:.68,rise:.16}
+];
 function setupSecondScene(art){
  if(!reducedMotion.matches){const a=art.animate([{transform:'translateX(9.5%)'},{transform:'translateX(0)'}],{duration:400,easing:'cubic-bezier(.16,1,.3,1)',fill:'forwards'});a.pause();secondAnimations.push(a)}
- // The four words travel at the same measured speed, with distinct fade slopes.
- const specs=[
-  {x:18.3,y:12.86,alpha:.93,fade:1.52},
-  {x:68.8,y:20.35,alpha:1.22,fade:1.52},
-  {x:18.5,y:29.44,alpha:2.70,fade:1.50,appear:.48,rise:.50},
-  {x:66.85,y:27.06,alpha:1.80,fade:1.17,appear:.68,rise:.16}
- ];
- specs.forEach((spec,i)=>{const word=document.createElement('img');word.src='assets/really.png';word.alt='';word.className='second-word';word.style.left=spec.x+'%';word.dataset.word=i;art.append(word)});
- art._wordSpecs=specs;
+ secondWordSpecs.forEach((spec,i)=>{const word=takeSceneImage('assets/really.png');word.className='second-word';word.style.left=spec.x+'%';word.dataset.word=i;art.append(word)});
  const dot=document.createElement('span');dot.className='second-progress-dot';art.append(dot);
  const current=document.createElement('span');current.className='second-time second-current';art.append(current);
  const total=document.createElement('span');total.className='second-time second-total';total.textContent='2:16';art.append(total);
@@ -76,10 +75,59 @@ function updateSecondFrame(){
  const time=Number.isFinite(audio.currentTime)?audio.currentTime:0;
  for(const a of secondAnimations)a.currentTime=time*1000;
  const art=sceneNode('.stage-art'),phase=time%1.7833;
- art.querySelectorAll('.second-word').forEach(word=>{const spec=art._wordSpecs[Number(word.dataset.word)];word.style.top=spec.y+'%';word.style.transform=`translateY(${phase*25*1932/1111}cqw)`;word.style.opacity=Math.max(0,Math.min(1,spec.alpha-spec.fade*phase,spec.appear===undefined?1:(phase-spec.appear)/spec.rise))});
+ art.querySelectorAll('.second-word').forEach(word=>{const spec=secondWordSpecs[Number(word.dataset.word)];word.style.top=spec.y+'%';word.style.transform=`translateY(${phase*25*1932/1111}cqw)`;word.style.opacity=Math.max(0,Math.min(1,spec.alpha-spec.fade*phase,spec.appear===undefined?1:(phase-spec.appear)/spec.rise))});
  const dot=sceneNode('.second-progress-dot');if(dot)dot.style.left=(18.4+time*.19)+'%';
  const current=sceneNode('.second-current');setText(current,format(2.5+time));
 }
+// A tiled displacement map gives the ink small, abrupt offsets along the lines.
+const inkPoses = [[0,0], [.042,-.019], [-.038,.024], [.07,.015], [-.061,-.027]];
+let inkDisplacementMap;
+function createInkDisplacementMap() {
+ const columns=15, rows=28, horizontal=[88,108,128,148,168], vertical=[102,116,128,140,154];
+ let seed=77, tiles='';
+ function channel(values) {
+  seed=(seed*16807)%2147483647;
+  return values[seed%values.length];
+ }
+ for(let y=0;y<rows;y++){
+  for(let x=0;x<columns;x++){
+   tiles+=`<rect x="${x}" y="${y}" width="1" height="1" fill="rgb(${channel(horizontal)},${channel(vertical)},128)"/>`;
+  }
+ }
+ return 'data:image/svg+xml,'+encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${columns} ${rows}" preserveAspectRatio="none" shape-rendering="crispEdges">${tiles}</svg>`);
+}
+
+function setupInkFilters(id, backdrop=false) {
+ if(document.getElementById(`${id}-0`))return;
+ inkDisplacementMap ??= createInkDisplacementMap();
+ // The scrolling backdrop overscans the stage. Keep enough of it in the
+ // filter region to sample beyond the edges without exposing the stage.
+ const region=backdrop?'x="-.025" y="-.025" width="1.05" height="1.05"':'x="0" y=".19" width="1" height=".46"';
+ const padding=backdrop ? .1 : 0, size=1+2*padding;
+ const source=backdrop?'soft-backdrop':'SourceGraphic';
+ const blur=backdrop?'<feGaussianBlur in="SourceGraphic" stdDeviation=".0017" result="soft-backdrop"/>':'';
+ const strength=backdrop ? .036 : .017;
+ const definitions=document.createElementNS('http://www.w3.org/2000/svg','svg');
+ definitions.setAttribute('width','0');
+ definitions.setAttribute('height','0');
+ definitions.setAttribute('aria-hidden','true');
+ definitions.style.position='absolute';
+ definitions.innerHTML=`<defs>${inkPoses.map(([x,y],pose)=>`
+  <filter id="${id}-${pose}" ${region} primitiveUnits="objectBoundingBox" color-interpolation-filters="sRGB">
+   <feImage href="${inkDisplacementMap}" x="${x-padding}" y="${y-padding}" width="${size}" height="${size}" preserveAspectRatio="none" result="ink-offsets"/>
+   ${blur}
+   <feDisplacementMap in="${source}" in2="ink-offsets" scale="${strength}" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>`).join('')}</defs>`;
+ document.body.append(definitions);
+}
+
+function applyInkPose(element,id,time) {
+ const pose=Math.floor(time*5)%inkPoses.length;
+ const filter=`url("#${id}-${pose}")`;
+ if(element.style.filter!==filter)element.style.filter=filter;
+}
+
 // Third scene uses small, sampled movements rather than a whole-canvas drift.
 function setupThirdScene(art){
  if(!reducedMotion.matches){
@@ -88,11 +136,10 @@ function setupThirdScene(art){
  }
  const elements=document.createElement('div');elements.className='third-components';art.append(elements);
  for(const name of ['person','planet','star1','star2','star3']){
-  const img=document.createElement('img');img.src=`assets/third/${name}.png`;img.alt='';img.dataset.third=name;
+  const img=takeSceneImage(`assets/third/${name}.png`);img.dataset.third=name;
   const pivots={planet:'26.27% 57.85%',star1:'24.46% 32.23%',star2:'34.96% 47.31%',star3:'81.16% 58.88%'};
   if(pivots[name])img.style.transformOrigin=pivots[name];elements.append(img);
  }
- const cover=document.createElement('span');cover.className='third-duration-cover';art.append(cover);
  const elapsed=document.createElement('span');elapsed.className='third-time third-current';art.append(elapsed);
  const total=document.createElement('span');total.className='third-time third-total';total.textContent='3:14';art.append(total);
  const dot=document.createElement('span');dot.className='third-progress-dot';art.append(dot);
@@ -102,6 +149,7 @@ function updateThirdFrame(){
  const time=Number.isFinite(audio.currentTime)?audio.currentTime:0;
  for(const animation of thirdAnimations)animation.currentTime=time*1000;
  if(!reducedMotion.matches){
+  applyInkPose(sceneNode('.third-components'),'third-ink',time);
   const sample=Math.max(0,Math.min(46,Math.round((time-.45)*10)));
   for(const [name,values] of Object.entries(THIRD_MOTION)){
    const element=sceneNode(`[data-third="${name}"]`);if(!element)continue;
@@ -174,12 +222,20 @@ const remainingConfig={
  8:{start:69,color:'#a45d61',dot:32.0},9:{start:111,color:'#74659b',dot:44.0},
  10:{start:84,color:'#18064e',dot:39.0},11:{start:83,color:'#29102f',dot:39.3},12:{start:48,color:'#632d34',dot:35.0}
 };
+const chatBubbleOrigins={
+ '对话框（1）':'65% 35.7%',
+ '对话框（2）':'82.1% 45.4%',
+ '对话框（3）':'65.1% 54.5%'
+};
 function setupRemainingLayer(img,name){
  remainingLayers[name]=img;img.dataset.remaining=name;if(REMAINING_MOTION[index+1]?.[name]||name.includes('海浪'))img.style.willChange='transform';
  const motion=REMAINING_MOTION[index+1]?.[name];if(motion)img.style.transformOrigin=motion.pivot[0]+'% '+motion.pivot[1]+'%';if(name==='沃玛'&&REMAINING_PULSE[index+1])img.style.transformOrigin='50% 61.98%';
  if(index===9&&name==='背景.jpg')img.classList.add('remaining-pan-background');
+ if(index===10&&chatBubbleOrigins[name])img.style.transformOrigin=chatBubbleOrigins[name];
 }
 function setupRemainingScene(art){
+ if(index===9&&!reducedMotion.matches){
+ }
  if(!reducedMotion.matches&&index!==7){
   const entry=art.animate([{transform:'translateX(10%)'},{transform:'translateX(0)'}],{duration:500,easing:'cubic-bezier(.2,.8,.2,1)',fill:'forwards'});entry.pause();remainingAnimations.push(entry);
  }
@@ -190,6 +246,15 @@ function setupRemainingScene(art){
 function fittedParam(p,time){const c=p.coef;if(!p.period)return c[0];const phase=2*Math.PI*time/p.period;return c[0]+c[1]*Math.sin(phase)+c[2]*Math.cos(phase)}
 function between(value,a,b){return Math.max(0,Math.min(1,(value-a)/(b-a)))}
 function interpolateKeys(t,keys){if(t<=keys[0][0])return keys[0][1];for(let i=1;i<keys.length;i++){if(t<=keys[i][0]){const [a,x]=keys[i-1],[b,y]=keys[i];return x+(y-x)*(t-a)/(b-a)}}return keys.at(-1)[1]}
+function renderChatBubble(bubble,time,entry,offset,direction=1) {
+ if(!bubble)return;
+ const progress=between(time,entry,entry+.36);
+ // Swing around the tail, past horizontal, then settle with a small recoil.
+ const spring=reducedMotion.matches ? 0 : (1-progress)**3*Math.cos(progress*3*Math.PI);
+ bubble.style.transform=`translateY(${offset}%) rotate(${22*direction*spring}deg)`;
+ const reveal=entry===0 ? 1 : between(time,entry,entry+.20);
+ bubble.style.opacity=String(1-(1-reveal)**2);
+}
 function updateRemainingFrame(){
  if(index<5)return;
  const scene=index+1,time=Number.isFinite(audio.currentTime)?audio.currentTime:0,cfg=remainingConfig[scene];
@@ -203,7 +268,11 @@ function updateRemainingFrame(){
    if(scene===6&&name==='星球'){angle=0;sy=1;y=0}
    el.style.transform=`translate(${x/276*100}%, ${y/484*100}%) rotate(${-angle}deg) scaleY(${sy})`;
   }
-  if(scene===10&&remainingLayers['背景.jpg'])remainingLayers['背景.jpg'].style.transform=`translateX(${-time*8/165*100}%)`;
+  if(scene===10){
+   remainingLayers['背景.jpg'].style.transform=`translateX(${-time*8/165*100}%)`;
+   applyInkPose(sceneNode('.scene-portrait'),'third-ink',time);
+   applyInkPose(sceneNode('.scene-backdrop'),'tower-backdrop-ink',time);
+  }
  }
  if(scene===9){
   applyScene9Fix(time,remainingLayers,reducedMotion.matches);
@@ -211,10 +280,10 @@ function updateRemainingFrame(){
   ['海浪（后）','海浪（中）','海浪（前）'].forEach((name,i)=>{const el=remainingLayers[name];if(el)el.style.transform=`translateY(${interpolateKeys(time-i*.18,keys)}%)`});
  }
  if(scene===11){
-  const u=between(time,2.2,2.5),v=between(time,4.12,4.42),green=remainingLayers['对话框（3）'],white=remainingLayers['对话框（2）'],newGreen=remainingLayers['对话框（1）'];
-  if(green){green.style.transform=`translateY(${-9.1*u-9.7*v}%)`;green.style.opacity='1'}
-  if(white){white.style.transform=`translateY(${9.1*(1-v)}%)`;white.style.opacity=String(between(time,2.35,2.55))}
-  if(newGreen){newGreen.style.transform='translateY(18.8%)';newGreen.style.opacity=String(between(time,4.28,4.48))}
+  const firstRise=between(time,2.2,2.5),secondRise=between(time,4.12,4.42);
+  renderChatBubble(remainingLayers['对话框（3）'],time,0,-9.1*firstRise-9.7*secondRise);
+  renderChatBubble(remainingLayers['对话框（2）'],time,2.35,9.1*(1-secondRise),-1);
+  renderChatBubble(remainingLayers['对话框（1）'],time,4.28,18.8);
  }
  const dot=sceneNode('.remaining-progress-dot');if(dot)dot.style.left=(cfg.dot+time*.18)+'%';
  const elapsed=sceneNode('.remaining-time');setText(elapsed,format(cfg.start+time));
